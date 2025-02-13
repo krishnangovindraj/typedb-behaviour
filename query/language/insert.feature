@@ -210,7 +210,7 @@ Feature: TypeQL Insert Query
 
 
   Scenario: A single variable may not have multiple isa constraints in an insert stage
-    When typeql write query; fails with a message containing: "Found multiple insert statements for the variable"
+    When typeql write query; fails with a message containing: "Found conflicting types for inserting the variable 'x'"
       """
       insert
       $x isa person;
