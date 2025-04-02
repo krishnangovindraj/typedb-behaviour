@@ -586,6 +586,7 @@ Feature: TypeQL Put Query
     """
     Then transaction is open: false
 
+
   Scenario: Put stages may only contain thing statements
     Given connection open write transaction for database: typedb
     Then typeql write query; parsing fails
@@ -605,3 +606,62 @@ Feature: TypeQL Put Query
     put $p isa person, has age (10 + 5);
     """
 
+
+  ###########################
+  #  At most once behaviour #
+  ###########################
+
+  Scenario: Put stages will put a given pattern at most once.
+    Given connection open write transaction for database: typedb
+    Then typeql write query
+    """
+    insert
+      $p1 isa person, has name "John";
+      $p2 isa person, has name "John";
+    """
+
+    When get answers of typeql write query
+    """
+      match $john isa person, has name "John";
+      put   $jane isa person, has name "Jane";
+    """
+    Then answer size is: 2
+
+    Then get answers of typeql read query
+    """
+    match $jane isa person, has name "Jane";
+    """
+    Then answer size is: 1
+
+
+  # This isn't essential behaviour, it's just documentation of weirdness.
+  Scenario: Put stages may insert duplicates when the pattern & inputs are symmetric
+    Given connection open schema transaction for database: typedb
+    Given typeql schema query
+    """
+    define
+      relation friendship, relates friend @card(2);
+      person plays friendship:friend;
+    """
+    Given transaction commits
+
+    Given connection open write transaction for database: typedb
+    Then typeql write query
+    """
+    insert
+      $p1 isa person, has name "John";
+      $p2 isa person, has name "James";
+    """
+
+    Then get answers of typeql write query
+    """
+      match $p1 isa person; $p2 isa person; not { $p1 is $p2; };
+      put $f isa friendship, links (friend: $p1, friend: $p2);
+    """
+    Then answer size is: 2
+
+    Then get answers of typeql read query
+    """
+    match $f isa friendship, links (friend: $p1, friend: $p2);
+    """
+    Then answer size is: 2
