@@ -112,7 +112,7 @@ Feature: Function Usage
     Given transaction closes
 
 
-  Scenario: The same variable cannot be 'assigned' to twice, either by the same or different functions.
+  Scenario: The same variable cannot be 'assigned' to twice
     Given connection open schema transaction for database: typedb
     Given typeql schema query
     """
@@ -141,6 +141,29 @@ Feature: Function Usage
       let $five in five_stream();
       let $five in five_stream();
     """
+
+
+  Scenario: Assigning to the same variable ensures only returned rows with the same value succeed.
+    Given connection open schema transaction for database: typedb
+    Given typeql schema query
+    """
+    define
+    fun f() -> { integer, integer }:
+    match
+      { let $x = 0; } or { let $x = 1; };
+      { let $y = 0; } or { let $y = 2; };
+    return { $x, $y };
+    """
+    Given transaction commits
+    Given connection open read transaction for database: typedb
+    When get answers of typeql read query
+    """
+    match let $x, $x in f();
+    """
+    Then uniquely identify answer concepts
+      | x               |
+      | value:integer:0 |
+    Given transaction closes
 
 
   Scenario: Assigning to an anonymous variable discards the returned value.
