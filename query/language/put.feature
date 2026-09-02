@@ -607,7 +607,7 @@ Feature: TypeQL Put Query
     """
 
     Given connection open write transaction for database: typedb
-    Then typeql write query; fails with a message containing: "Illegal statement 'expression' provided for a put stage. Only 'has', 'links' and 'isa' constraints are allowed."
+    Then typeql write query; fails with a message containing: "Illegal statement 'expression' provided for a put stage."
     """
     put $p isa person, has age (10 + 5);
     """
