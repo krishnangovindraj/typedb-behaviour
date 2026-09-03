@@ -980,19 +980,19 @@ Feature: TypeQL Query with Expressions
 
   Scenario Outline: test intrinsic unary function <function> when applied to <type> produces correct result
     Given connection open read transaction for database: typedb
-    Then typeql read query; fails with a message containing: "Built-in function '<function>' cannot be applied to arguments of type '<type>'."
+    Then typeql read query; fails with a message containing: "Built-in function '<namespaced>' cannot be applied to arguments of type '<type>'."
     """
       match
         let $a = <function>(<val>);
       """
     Examples:
-      | function | type    | val      |
-      | ceil     | integer | 0        |
-      | floor    | integer | 0        |
-      | round    | integer | 0        |
-      | len      | integer | 0        |
-      | len      | double  | 0.0      |
-      | len      | decimal | 0.0dec   |
+      | function | type    | val      | namespaced        |
+      | ceil     | integer | 0        | std::math::ceil   |
+      | floor    | integer | 0        | std::math::floor  |
+      | round    | integer | 0        | std::math::round  |
+      | len      | integer | 0        | std::string::len  |
+      | len      | double  | 0.0      | std::string::len  |
+      | len      | decimal | 0.0dec   | std::string::len  |
 
 
   Scenario: Test operators on variables
@@ -2373,3 +2373,42 @@ Feature: TypeQL Query with Expressions
     | attr:name:"aaaaaaaaaaaaaaaaaa"   | value:integer:1 |
     | attr:name:"aaaaaaaaaaaaaaaaaaa"  | value:integer:1 |
     | attr:name:"aaaaaaaaaaaaaaaaaaaa" | value:integer:1 |
+
+
+  ###############
+  # NAMESPACING #
+  ###############
+  Scenario Outline: Test unary functions with namespacing
+    Given connection open read transaction for database: typedb
+    When get answers of typeql read query
+    """
+      match let $result = <function>(<argument>);
+      """
+    Then uniquely identify answer concepts
+      | result                       |
+      | value:<result_type>:<result> |
+
+    Examples:
+      | function            | argument | result_type | result |
+      | std::math::abs      | -1/2     | double      |  0.5   |
+      | std::math::floor    | 3/2      | integer     | 1      |
+      | std::math::ceil     | 3/2      | integer     | 2      |
+      | std::math::round    | -11.5    | integer     | -12    |
+      | std::math::log10    | 1000     | double      | 3.0    |
+      | std::string::len    | "12345"  | integer     | 5      |
+
+
+  Scenario Outline: Test binary functions with namespacing
+    Given connection open read transaction for database: typedb
+    When get answers of typeql read query
+    """
+      match let $result = <function>(<a>, <b>);
+      """
+    Then uniquely identify answer concepts
+      | result                       |
+      | value:<result_type>:<result> |
+
+    Examples:
+      | function        |   a      |    b     | result_type | result  |
+      | std::math::min  | 10.2dec  | 13.5dec  |   decimal   | 10.2dec |
+      | std::math::max  | 10.2dec  | 13.5dec  |   decimal   | 13.5dec |
