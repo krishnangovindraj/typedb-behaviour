@@ -351,6 +351,117 @@ Feature: TypeQL Variable binding tests
     """
     Then answer size is: 0
 
+    # Originating from a reduce
+    When typeql read query; fails with a message containing: "The optional variable 'mean' was used in a context where it may fail the branch if unset. Please acknowledge the optionality"
+    """
+    match
+      try { let $x = 1; $x == 0; };
+    reduce
+      $mean = mean($x);
+    match
+      let $twice_mean = 2 * $mean;
+    """
+    When get answers of typeql read query
+    """
+    match
+      try { let $x = 1; $x == 0; };
+    reduce
+      $mean = mean($x);
+    match
+      isset $mean;
+      let $twice_mean = 2 * $mean;
+    """
+    Then answer size is: 0
+
+
+  # TODO: Do we even want to allow this behaviour?
+  Scenario: Referencing optional variables in a write stage outside an if fails
+    Given connection open write transaction for database: typedb
+    When typeql write query; fails with a message containing: "The optional variable 'x' was used in a context where it may fail the branch if unset. Please acknowledge the optionality"
+    """
+    match
+      try { $x isa person; };
+    insert
+      $x has name "Steve";
+    """
+    Given connection open write transaction for database: typedb
+    When get answers of typeql write query
+    """
+    match
+      try { $x isa person; };
+    insert
+      if { isset $x; } {
+        $x has name "Steve";
+      };
+    """
+    Then answer size is: 1
+    Given transaction closes
+
+    Given connection open write transaction for database: typedb
+    When typeql write query; fails with a message containing: "The optional variable 'x' was used in a context where it may fail the branch if unset. Please acknowledge the optionality"
+    """
+    match
+      try { $x isa person; };
+    put
+      $x has name "Steve";
+    """
+    Given connection open write transaction for database: typedb
+    When get answers of typeql write query
+    """
+    match
+      try { $x isa person; };
+    put
+      if { isset $x; } {
+        $x has name "Steve";
+      }
+    """
+    Then answer size is: 1
+    Given transaction closes
+
+    Given connection open write transaction for database: typedb
+    When typeql write query; fails with a message containing: "The optional variable 'x' was used in a context where it may fail the branch if unset. Please acknowledge the optionality"
+    """
+    match
+      try { $x isa person; };
+    update
+      if { isset $x; } {
+        $x has ref 54321;
+      };
+    """
+    Given connection open write transaction for database: typedb
+    When get answers of typeql write query
+    """
+    match
+      try { $x isa person; };
+    update
+      if { isset $x; } {
+        $x has ref 54321;
+      };
+    """
+    Then answer size is: 1
+    Given transaction closes
+
+    Given connection open write transaction for database: typedb
+    When typeql write query; fails with a message containing: "The optional variable 'x' was used in a context where it may fail the branch if unset. Please acknowledge the optionality"
+    """
+    match
+      try { $x isa person; };
+    delete
+      $x;
+    """
+    Given connection open write transaction for database: typedb
+    When get answers of typeql write query
+    """
+    match
+      try { $x isa person; };
+    delete
+      if { isset $x; } {
+        $x;
+      };
+    """
+    Then answer size is: 1
+    Given transaction closes
+
 
   Scenario: Unwrapped variables are non-optional in the pattern and all sub-patterns of the unwrap
     Given connection open read transaction for database: typedb
