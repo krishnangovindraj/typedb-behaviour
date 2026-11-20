@@ -11,8 +11,6 @@ Feature: Defining RBAC roles
     Given connection is open: true
     Given connection has 0 databases
     Given connection create database: typedb
-
-  Scenario: RBAC roles can be defined & read back
     Given connection open schema transaction for database: typedb
 
     Given typeql schema query
@@ -36,13 +34,38 @@ Feature: Defining RBAC roles
       entity user,
         owns email,
         plays authorship:author;
+    """
+    Given transaction commits
 
+
+  Scenario: RBAC roles can be defined & read back
+    Given connection open schema transaction for database: typedb
+    Given typeql schema query
+    """
+    define
       rbac post-readers,
         reads { post, comment, user },
         writes { views };
     """
+    # Read them from the buffer
+    Then list rbac declared access for role: post-readers
+      | type    | access |
+      | post    | read   |
+      | comment | read   |
+      | user    | read   |
+      | views   | write  |
     Given transaction commits
 
+    # Read them without a cache
+    Given connection open schema transaction for database: typedb
+    Then list rbac declared access for role: post-readers
+      | type    | access |
+      | post    | read   |
+      | comment | read   |
+      | user    | read   |
+      | views   | write  |
+    Given transaction closes
+    # Read them from a cache
     Given connection open read transaction for database: typedb
     Then list rbac declared access for role: post-readers
       | type    | access |
@@ -61,3 +84,16 @@ Feature: Defining RBAC roles
     Then rbac role 'post-readers' has write access on type 'comment': false
     Then rbac role 'post-readers' has write access on type 'user': false
     Then rbac role 'post-readers' has write access on type 'views': true
+
+
+  Scenario Outline: Users can be assigned global permission
+    Given create user with username 'user1', password 'password'
+    When grant user '' permission:
+    Then user
+
+    Examples:
+    | permission   |
+    | manage-users    |
+    | manage-databases |
+    | grant-permissions |
+
